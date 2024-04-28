@@ -24,9 +24,9 @@ int currentStates;
 int motionStatus = 0; 
 
 
-char auth[] = "DsMLuPYNbOQ9IskAqAfxGZMGCZLk6gt3"; // change it to your auth code 
-char ssid[] = "VM6179617";                    // change it 
-char pass[] = "j6nkFmjJgdfj";                 // change it 
+char auth[] = "jdwopifjwoiehp"; // change it to your auth code 
+char ssid[] = "Enter Wifi Name";                    // change it 
+char pass[] = "Enter Wifi password";                 // change it 
 
 void setup()
 {
