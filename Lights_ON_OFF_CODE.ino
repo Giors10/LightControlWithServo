@@ -5,13 +5,26 @@
 #include <BlynkSimpleEsp8266.h>
 #include <Servo.h>
 #include "RTClib.h"
-#define BUTTON_PIN D7
-#define BUTTON_PINs D6
-#define MOTION_PIN D5
+
+const int BUTTON_PIN = D7;
+const int BUTTON_PINs = D6;
+const int MOTION_PIN = D5;
+const int LDR_PIN = A0;
 
 unsigned long startMillis;  //some global variables available anywhere in the program
 unsigned long currentMillis;
 const unsigned long period = 1000;
+
+unsigned long startMillis1;  //some global variables available anywhere in the program
+unsigned long currentMillis1;
+const unsigned long period1 = 1200000;
+
+unsigned long startMillis2;  //some global variables available anywhere in the program
+unsigned long currentMillis2;
+const unsigned long period2 = 1200000;
+
+
+
 Servo servo1;
 RTC_DS1307 rtc;
 
@@ -24,83 +37,61 @@ int currentStates;
 int motionStatus = 0; 
 
 
-char auth[] = "jdwopifjwoiehp"; // change it to your auth code 
-char ssid[] = "Enter Wifi Name";                    // change it 
-char pass[] = "Enter Wifi password";                 // change it 
+char auth[] = "authcode on blynk"; // change it to your auth code 
+char ssid[] = "WifiName";                    // change it 
+char pass[] = "Wifi password";                 // change it 
 
-void setup()
-{
+void setup() {
   Serial.begin(9600);
   Blynk.begin(auth, ssid, pass);
   servo1.attach(15); // NodeMCU D8 pin
   pinMode(BUTTON_PIN, INPUT_PULLUP);
   pinMode(BUTTON_PINs, INPUT_PULLUP);
   pinMode(MOTION_PIN, INPUT);
-  startMillis = millis();
+  
   Serial.println("Looking for Real Time Clock...");
   
-  if (! rtc.begin())
-    {
+  if (!rtc.begin()) {
     Serial.println("Could NOT find RTC");
     Serial.flush();
-    abort();
-    }
-  else
-    {
+    //abort();
+  } else {
     Serial.println("Found RTC");
-    }
+  }
 
-  if (! rtc.isrunning())
-    {
+  if (!rtc.isrunning()) {
     Serial.println("\nReal Time Clock is NOT running, Setting the time now...");
     rtc.adjust(DateTime(F(__DATE__), F(__TIME__)));
     Serial.println("Time has been set");
-    }
-  else
-    {
+  } else {
     Serial.println("\nReal Time Clock is already running - NOT setting the time now.");
-    }
-    
-
+  }
 }
 
-void loop()
-{
+void loop() {
+  Blynk.run(); // Call Blynk.run() in the loop to maintain communication with the Blynk server
+
+
+  // Read LDR sensor value
+  int ldrValue = analogRead(LDR_PIN);
   DateTime now = rtc.now();
   currentState = digitalRead(BUTTON_PIN);
   currentStates = digitalRead(BUTTON_PINs);
   motionStatus = digitalRead(MOTION_PIN);
-  int analogValue = analogRead(A0);
   currentMillis = millis();
-  Serial.println(motionStatus);
   int hour = now.hour();
-
-
-
+  Serial.println(hour);
 
   if (hour <= 20 || hour >= 6) {
-    if (analogValue < 200) {
+    if (ldrValue < 200 && motionStatus == HIGH) {
       if (currentMillis - startMillis >= period){
-        if (analogValue < 200) {
+        if (ldrValue < 200 && motionStatus == HIGH) {
           servo1.write(115);
           Serial.println(" - ON");
-    if (motionStatus == HIGH) { 
-      Serial.println("Motion Detected");
-      servo1.write(115);
-    }
-    else { 
-      Serial.println("Motion Ended"); 
-      
-    }
+        }
       }
     }
-    }
-
-
-  }
-
-
-
+  }  
   if (lastState == HIGH && currentState == LOW) {
     servo1.write(115);
     delay(600);
@@ -115,11 +106,14 @@ void loop()
   lastState = currentState;
   lastStates = currentStates;
  
-  Blynk.run(); // Call Blynk.run() in the loop to maintain communication with the Blynk server
+
+  // Your remaining code logic goes here...
 }
 
-BLYNK_WRITE(V1)
-{
+
+
+
+BLYNK_WRITE(V1){
   servo1.write(param.asInt());
   delay(500);
 
