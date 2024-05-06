@@ -1,4 +1,4 @@
-#define BLYNK_TEMPLATE_ID "TMPL5ym-mRDx2"
+#define BLYNK_TEMPLATE_ID "TMPL5ym-mRDx2" //change to your own 
 #define BLYNK_TEMPLATE_NAME "LightControl"
 #define BLYNK_PRINT Serial
 #include <ESP8266WiFi.h>
