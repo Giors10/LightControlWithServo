@@ -1,5 +1,3 @@
-// my epic smart switch firmware
-// version 40.0 i guess
 
 #include <ESP8266WiFi.h>
 #include <ESP8266WDT.h>
@@ -38,7 +36,7 @@ const int PIR_PIN        = D5;
 const int ON_OFF_BTN_PIN = D6;
 const int MENU_BTN_PIN   = D7;
 
-// ------ TIMINGS AND STUFF ------
+// ------ TIMINGS ------
 const unsigned long BUTTON_DEBOUNCE_MS = 50;
 const unsigned long LONG_PRESS_MS = 1000;
 const unsigned long SCREEN_SLEEP_TIMEOUT_MS = 30000; // 30 secs
@@ -109,7 +107,7 @@ const unsigned char wifi_icon_16x8[] PROGMEM = { 0x00, 0x00, 0x00, 0x00, 0x07, 0
 const unsigned char app_icon_16x8[] PROGMEM = { 0x3f, 0xfc, 0x7f, 0xfe, 0x7f, 0xfe, 0x7f, 0xfe, 0x7f, 0xfe, 0x7f, 0xfe, 0x7f, 0xfe, 0x3f, 0xfc };
 
 
-// ------ FUNCTION PROTOTYPES (makes the compiler happy) ------
+// ------ FUNCTION PROTOTYPES  ------
 const char* modeToString(SystemMode mode);
 void logMessage(const char* msg);
 void factoryReset();
@@ -319,3 +317,4 @@ void setup_OTA() { ArduinoOTA.onStart([] { logMessage("OTA Update Started..."); 
 void reconnect() { static unsigned long lastReconnectAttempt = 0; if (millis() - lastReconnectAttempt > 5000) { lastReconnectAttempt = millis(); logMessage("Attempting MQTT connection..."); displayNeedsUpdate = true; if (mqttClient.connect(deviceID, mqtt_user, mqtt_pass)) { logMessage("MQTT connected!"); mqttClient.subscribe(topicCommand); publishStatus(); } else { char buffer[64]; snprintf(buffer, sizeof(buffer), "MQTT failed, rc=%d", mqttClient.state()); logMessage(buffer); } } }
 void mqttCallback(char* topic, byte* payload, unsigned int length) { char p[length + 1]; memcpy(p, payload, length); p[length] = '\0'; logMessage("--- MQTT Command Received ---"); logMessage(p); DynamicJsonDocument doc(1024); if (deserializeJson(doc, p)) { logMessage("JSON parsing failed!"); return; } const char* action = doc["action"]; if (!action) { logMessage("'action' key missing!"); return; } if (strcmp(action, "setLight") == 0) { logMessage("Action: setLight"); setSystemMode(MANUAL); manualModeStartTime = 0; setLightState(strcmp(doc["value"], "on") == 0); } else if (strcmp(action, "setMode") == 0) { logMessage("Action: setMode"); const char* value = doc["value"]; if (strcmp(value, "auto") == 0) setSystemMode(AUTO); else if (strcmp(value, "bedtime") == 0) setSystemMode(BEDTIME); else if (strcmp(value, "away") == 0) setSystemMode(AWAY); } else if (strcmp(action, "reboot") == 0) { logMessage("Action: reboot"); delay(1000); ESP.restart(); } else if (strcmp(action, "factory_reset") == 0) { logMessage("Action: factory_reset"); factoryReset(); } else if (strcmp(action, "calibrate") == 0) { logMessage("Action: calibrate"); int angle = doc["angle"]; if (!myServo.attached()) myServo.attach(SERVO_PIN); myServo.write(constrain(angle, 0, 180)); } else if (strcmp(action, "saveConfig") == 0) { logMessage("Action: saveConfig"); JsonObject data = doc["data"]; config.motionSensorEnabled = data["motionEnabled"]; config.SERVO_ON_ANGLE = constrain(data["servoOn"].as<int>(), 0, 180); config.SERVO_OFF_ANGLE = constrain(data["servoOff"].as<int>(), 0, 180); config.HESITATION_DURATION_S = constrain(data["hesitationS"].as<int>(), 0, 300); config.SUNSET_OFFSET_MINUTES = constrain(data["sunsetOffsetM"].as<int>(), -120, 120); config.MANUAL_OVERRIDE_TIMEOUT_M = data["manualTimeoutM"]; strlcpy(config.owmCity, data["city"], sizeof(config.owmCity)); strlcpy(config.owmCountryCode, data["country"], sizeof(config.owmCountryCode)); config.quietHoursEnabled = data["quietHoursEnabled"]; config.quietHoursStart = data["quietHoursStart"]; config.quietHoursEnd = data["quietHoursEnd"]; config.motionTimeout_M = data["motionTimeoutM"]; config.alarmEnabled = data["alarmEnabled"]; config.alarmTime = data["alarmTime"]; config.alarmDays = data["alarmDays"]; saveConfiguration(); } else if (strcmp(action, "getStatus") == 0) { logMessage("Action: getStatus"); publishStatus(); } else { logMessage("Unknown action!"); } logMessage("--- MQTT Command Done ---"); }
 void publishStatus() { if (!mqttClient.connected()) return; DynamicJsonDocument doc(2048); doc["lightState"] = lightState; doc["systemMode"] = modeToString(currentMode); doc["uptime"] = millis(); doc["wifiSignal"] = WiFi.RSSI(); doc["freeHeap"] = ESP.getFreeHeap(); time_t now = getCurrentTime(); if (now > 0) { struct tm* timeinfo = localtime(&now); char timeBuf[9]; snprintf(timeBuf, sizeof(timeBuf), "%02d:%02d:%02d", timeinfo->tm_hour, timeinfo->tm_min, timeinfo->tm_sec); doc["rtcTime"] = timeBuf; } else { doc["rtcTime"] = "N/A"; } doc["motionEnabled"] = config.motionSensorEnabled; doc["servoOn"] = config.SERVO_ON_ANGLE; doc["servoOff"] = config.SERVO_OFF_ANGLE; doc["hesitationS"] = config.HESITATION_DURATION_S; doc["sunsetOffsetM"] = config.SUNSET_OFFSET_MINUTES; doc["manualTimeoutM"] = config.MANUAL_OVERRIDE_TIMEOUT_M; doc["city"] = config.owmCity; doc["country"] = config.owmCountryCode; doc["quietHoursEnabled"] = config.quietHoursEnabled; doc["quietHoursStart"] = config.quietHoursStart; doc["quietHoursEnd"] = config.quietHoursEnd; doc["motionTimeoutM"] = config.motionTimeout_M; doc["alarmEnabled"] = config.alarmEnabled; doc["alarmTime"] = config.alarmTime; doc["alarmDays"] = config.alarmDays; doc["version"] = FW_VERSION; String response; serializeJson(doc, response); mqttClient.publish(topicStatus, response.c_str(), true); }
+
